@@ -4,13 +4,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.blebridge.model.Device;
-
-import java.util.ArrayList;
 
 /**
  * Provide views to RecyclerView with data from mDataSet.
@@ -25,7 +24,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
      * Provide a reference to the type of views that you are using (custom ViewHolder)
      */
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        private final TextView textView;
+        private final TextView viewDeviceMacAddress;
+        private final TextView viewDeviceName;
+        private final TextView viewDeviceModelName;
+        private final TextView viewDeviceSignalStrength;
+        private final ImageView viewDeviceImage;
 
         public ViewHolder(View v) {
             super(v);
@@ -36,11 +39,31 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
                     Log.d(TAG, "Element " + getAdapterPosition() + " clicked.");
                 }
             });
-            textView = (TextView) v.findViewById(R.id.deviceUuid);
+            viewDeviceMacAddress = (TextView) v.findViewById(R.id.deviceMacAddress);
+            viewDeviceName = (TextView) v.findViewById(R.id.deviceName);
+            viewDeviceModelName = (TextView) v.findViewById(R.id.deviceModelName);
+            viewDeviceSignalStrength = (TextView) v.findViewById(R.id.deviceSignalStrength);
+            viewDeviceImage = (ImageView) v.findViewById(R.id.deviceImage);
         }
 
-        public TextView getTextView() {
-            return textView;
+        public TextView getViewDeviceName() {
+            return viewDeviceName;
+        }
+
+        public TextView getViewDeviceModelName() {
+            return viewDeviceModelName;
+        }
+
+        public TextView getViewDeviceMacAddress() {
+            return viewDeviceMacAddress;
+        }
+
+        public TextView getViewDeviceSignalStrength() {
+            return viewDeviceSignalStrength;
+        }
+
+        public ImageView getViewDeviceImage() {
+            return viewDeviceImage;
         }
     }
     // END_INCLUDE(recyclerViewSampleViewHolder)
@@ -74,7 +97,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
 
         // Get element from your dataset at this position and replace the contents of the view
         // with that element
-        viewHolder.getTextView().setText(mDataSet[position].toString());
+        viewHolder.getViewDeviceName().setText(mDataSet[position].getName());
+        viewHolder.getViewDeviceModelName().setText(mDataSet[position].getModelName());
+        viewHolder.getViewDeviceMacAddress().setText(mDataSet[position].getMacAddress());
+        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(mDataSet[position].getSignalStrength()));
+        viewHolder.getViewDeviceImage().setImageResource(R.drawable.dev1_sensor_only);
     }
     // END_INCLUDE(recyclerViewOnBindViewHolder)
 

@@ -66,8 +66,8 @@ public class DeviceListFragment extends Fragment {
     }
 
     private void initDevices() {
-        devices = new Device[5];
-        for (int i = 0; i < 5; i++) {
+        devices = new Device[10];
+        for (int i = 0; i < devices.length; i++) {
             devices[i] = new Device();
         }
     }
