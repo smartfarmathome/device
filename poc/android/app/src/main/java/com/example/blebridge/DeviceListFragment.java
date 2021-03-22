@@ -16,14 +16,12 @@ import java.util.ArrayList;
 
 public class DeviceListFragment extends Fragment {
     private static final String TAG = DeviceListFragment.class.getSimpleName();
-    private Device[] devices;
     protected RecyclerView mRecyclerView;
     protected DeviceListAdapter mAdapter;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        initDevices();
     }
 
     @Override
@@ -43,10 +41,15 @@ public class DeviceListFragment extends Fragment {
         // elements are laid out.
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        mAdapter = new DeviceListAdapter(devices);
+        mAdapter = new DeviceListAdapter();
         // Set CustomAdapter as the adapter for RecyclerView.
         mRecyclerView.setAdapter(mAdapter);
         // END_INCLUDE(initializeRecyclerView)
+
+        for (int i = 0; i < 10; i++) {
+            Device device = new Device();
+            mAdapter.addDevice(device);
+        }
 
         return rootView;
     }
@@ -63,12 +66,5 @@ public class DeviceListFragment extends Fragment {
             }
         });
          */
-    }
-
-    private void initDevices() {
-        devices = new Device[10];
-        for (int i = 0; i < devices.length; i++) {
-            devices[i] = new Device();
-        }
     }
 }

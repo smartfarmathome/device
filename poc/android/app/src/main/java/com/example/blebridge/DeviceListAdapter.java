@@ -11,13 +11,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.blebridge.model.Device;
 
+import java.util.ArrayList;
+
 /**
  * Provide views to RecyclerView with data from mDataSet.
  */
 public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.ViewHolder> {
     private static final String TAG = DeviceListAdapter.class.getSimpleName();
 
-    private Device[] mDataSet;
+    private ArrayList<Device> devices;
 
     // BEGIN_INCLUDE(recyclerViewSampleViewHolder)
     /**
@@ -70,11 +72,9 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
 
     /**
      * Initialize the dataset of the Adapter.
-     *
-     * @param dataSet String[] containing the data to populate views to be used by RecyclerView.
      */
-    public DeviceListAdapter(Device[] dataSet) {
-        mDataSet = dataSet;
+    public DeviceListAdapter() {
+        devices = new ArrayList<>();
     }
 
     // BEGIN_INCLUDE(recyclerViewOnCreateViewHolder)
@@ -97,10 +97,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
 
         // Get element from your dataset at this position and replace the contents of the view
         // with that element
-        viewHolder.getViewDeviceName().setText(mDataSet[position].getName());
-        viewHolder.getViewDeviceModelName().setText(mDataSet[position].getModelName());
-        viewHolder.getViewDeviceMacAddress().setText(mDataSet[position].getMacAddress());
-        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(mDataSet[position].getSignalStrength()));
+        Device device = devices.get(position);
+        viewHolder.getViewDeviceName().setText(device.getName());
+        viewHolder.getViewDeviceModelName().setText(device.getModelName());
+        viewHolder.getViewDeviceMacAddress().setText(device.getMacAddress());
+        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(device.getSignalStrength()));
         viewHolder.getViewDeviceImage().setImageResource(R.drawable.dev1_sensor_only);
     }
     // END_INCLUDE(recyclerViewOnBindViewHolder)
@@ -108,6 +109,16 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return mDataSet.length;
+        return devices.size();
+    }
+
+    public void addDevice(Device device) {
+        devices.add(device);
+        notifyItemInserted(devices.size() - 1);
+    }
+
+    public void removeDevice(int position) {
+        devices.remove(position);
+        notifyItemRemoved(position);
     }
 }
