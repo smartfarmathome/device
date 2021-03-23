@@ -57,5 +57,6 @@ public class ScanFragment extends Fragment {
             });
             fab.setImageResource(android.R.drawable.ic_media_rew);
         }
+        BLEManager.getInstance().scanLeDevice(true);
     }
 }

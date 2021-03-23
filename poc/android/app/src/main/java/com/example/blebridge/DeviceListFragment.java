@@ -1,11 +1,17 @@
 package com.example.blebridge;
 
+import android.bluetooth.BluetoothAdapter;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -62,6 +68,25 @@ public class DeviceListFragment extends Fragment {
             fab.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    // check to determine whether BLE is supported on the device.
+                    if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                        Toast.makeText(getContext(), R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    int permission = ContextCompat.checkSelfPermission( getContext(), android.Manifest.permission.ACCESS_FINE_LOCATION );
+                    if (permission == PackageManager.PERMISSION_DENIED ) {
+                        if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), android.Manifest.permission.ACCESS_FINE_LOCATION) == true) {
+                            Toast.makeText(getContext(), R.string.should_be_permitted, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    if (permission != PackageManager.PERMISSION_GRANTED ) {
+                        ActivityCompat.requestPermissions( getActivity(), new String[] {  android.Manifest.permission.ACCESS_FINE_LOCATION  }, 1);
+                        return;
+                    }
+                    if (!BLEManager.getInstance().isEnabled()) {
+                        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        getActivity().startActivityForResult(enableBtIntent, 1);
+                    }
                     NavHostFragment.findNavController(DeviceListFragment.this)
                             .navigate(R.id.action_DeviceListFragment_to_ScanFragment);
                 }

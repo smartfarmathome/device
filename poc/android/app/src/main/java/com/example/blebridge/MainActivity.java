@@ -30,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
+
+        BLEManager.getInstance().init(getApplicationContext());
     }
 
     @Override
