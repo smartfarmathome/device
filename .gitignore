@@ -43,7 +43,7 @@
 *.elf
 
 # ctags
-ctags
+tags
 cscope.files
 cscope.out
 
