@@ -1,26 +1,40 @@
-package com.example.blebridge.model;
+package com.example.blebridge.BLEFacade;
 
+import android.bluetooth.BluetoothDevice;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.example.blebridge.DeviceListAdapter;
 
 import java.util.UUID;
 
-public class Device {
+public class SFAHDevice {
     private static final String TAG = DeviceListAdapter.class.getSimpleName();
     private UUID uuid;
     private String macAddress;
     private String name;
     private String modelName;
     private int signalStrength;
+    public BluetoothDevice bleDevice;
+    Bundle characteristics;
 
-    public Device() {
+    public SFAHDevice() {
         uuid = UUID.randomUUID();
         name = "name";
         modelName = "ABC-1234";
         macAddress = "00:03:78:11:22:33";
         signalStrength = 50;
         Log.d(TAG, "BLE device is created: UUID " + uuid.toString());
+    }
+
+    public SFAHDevice(BluetoothDevice bleDevice) {
+        this.bleDevice = bleDevice;
+    }
+
+    public SFAHDevice(BluetoothDevice bleDevice, int rssi) {
+        this.bleDevice = bleDevice;
+        this.macAddress = bleDevice.getAddress();
+        this.signalStrength = rssi;
     }
 
     public String getMacAddress() {
@@ -48,5 +62,10 @@ public class Device {
                 ", modelName='" + modelName + '\'' +
                 ", signalStrength=" + signalStrength +
                 '}';
+    }
+
+    void setCharacteristic(String uuid, byte[] value) {
+        Log.d(TAG, "setCharacteristic(" + uuid + ", " + value.toString());
+        characteristics.putByteArray(uuid, value);
     }
 }

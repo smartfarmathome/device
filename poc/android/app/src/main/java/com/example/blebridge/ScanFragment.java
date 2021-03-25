@@ -11,6 +11,8 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.blebridge.BLEFacade.BLEManager;
+import com.example.blebridge.BLEFacade.BleCallbacks;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class ScanFragment extends Fragment {
@@ -51,12 +53,20 @@ public class ScanFragment extends Fragment {
             fab.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    BLEManager.getInstance().stopScanLeDevice();
                     NavHostFragment.findNavController(ScanFragment.this)
                             .navigate(R.id.action_ScanFragment_to_DeviceListFragment);
                 }
             });
             fab.setImageResource(android.R.drawable.ic_media_rew);
         }
-        BLEManager.getInstance().scanLeDevice(true);
+        BLEManager.getInstance().startScanLeDevice(bleCallbacks);
     }
+
+    BleCallbacks bleCallbacks = new BleCallbacks() {
+        @Override
+        public void onScanFound(int i) {
+            mAdapter.notifyItemInserted(i);
+        }
+    };
 }

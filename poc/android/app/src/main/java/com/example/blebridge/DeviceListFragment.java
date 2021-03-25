@@ -17,7 +17,8 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.blebridge.model.Device;
+import com.example.blebridge.BLEFacade.BLEManager;
+import com.example.blebridge.BLEFacade.SFAHDevice;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class DeviceListFragment extends Fragment {
@@ -53,7 +54,7 @@ public class DeviceListFragment extends Fragment {
         // END_INCLUDE(initializeRecyclerView)
 
         for (int i = 0; i < 10; i++) {
-            Device device = new Device();
+            SFAHDevice device = new SFAHDevice();
             mAdapter.addDevice(device);
         }
 

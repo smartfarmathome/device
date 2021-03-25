@@ -2,6 +2,7 @@ package com.example.blebridge;
 
 import android.os.Bundle;
 
+import com.example.blebridge.BLEFacade.BLEManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 

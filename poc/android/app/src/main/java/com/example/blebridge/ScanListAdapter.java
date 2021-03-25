@@ -9,17 +9,14 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.blebridge.model.Device;
-
-import java.util.ArrayList;
+import com.example.blebridge.BLEFacade.BLEManager;
+import com.example.blebridge.BLEFacade.SFAHDevice;
 
 /**
  * Provide views to RecyclerView with data from mDataSet.
  */
 public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHolder> {
     private static final String TAG = ScanListAdapter.class.getSimpleName();
-
-    private ArrayList<Device> devices;
 
     // BEGIN_INCLUDE(recyclerViewSampleViewHolder)
     /**
@@ -40,6 +37,7 @@ public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHo
                 public void onClick(View v) {
                     int position = getAdapterPosition();
                     Log.d(TAG, "Element " + position + " clicked.");
+                    BLEManager.getInstance().connectScanned(position);
                 }
             });
             viewDeviceMacAddress = (TextView) v.findViewById(R.id.deviceMacAddress);
@@ -71,13 +69,6 @@ public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHo
     }
     // END_INCLUDE(recyclerViewSampleViewHolder)
 
-    /**
-     * Initialize the dataset of the Adapter.
-     */
-    public ScanListAdapter() {
-        devices = new ArrayList<>();
-    }
-
     // BEGIN_INCLUDE(recyclerViewOnCreateViewHolder)
     // Create new views (invoked by the layout manager)
     @Override
@@ -98,11 +89,11 @@ public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHo
 
         // Get element from your dataset at this position and replace the contents of the view
         // with that element
-        Device device = devices.get(position);
-        viewHolder.getViewDeviceName().setText(device.getName());
-        viewHolder.getViewDeviceModelName().setText(device.getModelName());
-        viewHolder.getViewDeviceMacAddress().setText(device.getMacAddress());
-        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(device.getSignalStrength()));
+        SFAHDevice SFAHDevice = BLEManager.getInstance().getSFAHDevice(position);
+        viewHolder.getViewDeviceName().setText(SFAHDevice.getName());
+        viewHolder.getViewDeviceModelName().setText(SFAHDevice.getModelName());
+        viewHolder.getViewDeviceMacAddress().setText(SFAHDevice.getMacAddress());
+        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(SFAHDevice.getSignalStrength()));
         viewHolder.getViewDeviceImage().setImageResource(R.drawable.dev1_sensor_only);
     }
     // END_INCLUDE(recyclerViewOnBindViewHolder)
@@ -110,16 +101,6 @@ public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHo
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return devices.size();
-    }
-
-    public void addDevice(Device device) {
-        devices.add(device);
-        notifyItemInserted(devices.size() - 1);
-    }
-
-    public void removeDevice(int position) {
-        devices.remove(position);
-        notifyItemRemoved(position);
+        return BLEManager.getInstance().getDeviceCountScanned();
     }
 }
