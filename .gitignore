@@ -46,6 +46,7 @@
 tags
 cscope.files
 cscope.out
+mktags.sh
 
 ### AndroidStudio ###
 # Covers files to be ignored for android development using Android Studio.

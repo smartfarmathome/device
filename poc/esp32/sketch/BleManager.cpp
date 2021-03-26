@@ -102,13 +102,26 @@ void ble_setup() {
 	bleTemperatureChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2A6E), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 	//outdoorTemperatureDescriptor.setValue("Temperature -40-60°C");
 	//bleTemperatureChar->addDescriptor(&outdoorTemperatureDescriptor);
-	bleTemperatureChar->addDescriptor(new BLE2902());
+	BLEDescriptor *descEsMeasurementTemp = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
+	uint8_t value[] = {
+		0x00, 0x00,	// flag
+		0x02,		// sampling function
+		0x0a, 0x00, 0x00,	// measurement period
+		0x84, 0x03, 0x00,	// update interval
+		0x01,		// application
+		0x02,		// measurement uncertaintity
+	};
+	descEsMeasurementTemp->setValue(value, sizeof(value));
+	bleTemperatureChar->addDescriptor(descEsMeasurementTemp);
 
 	// add humidity
 	bleHumidityChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2A6F), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
 	//outdoorHumidityDescriptor.setValue("Humidity 0 to 100%");
 	//bleHumidityChar->addDescriptor(&outdoorHumidityDescriptor);
-	bleHumidityChar->addDescriptor(new BLE2902());
+	BLEDescriptor *descEsMeasurementHumi = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
+	descEsMeasurementHumi->setValue(value, sizeof(value));
+	bleHumidityChar->addDescriptor(descEsMeasurementHumi);
+	//bleHumidityChar->addDescriptor(new BLE2902());
 
 	bleEsService->start();
 
@@ -128,21 +141,23 @@ void ble_setup() {
 	strServiceData += oBeacon.getData(); 
 	oAdvertisementData.addData(strServiceData);
 	bleServer->getAdvertising()->setAdvertisementData(oAdvertisementData);
+#endif
 
 	BLEAdvertisementData oScanResponseData = BLEAdvertisementData();
-	oScanResponseData.setName(BLE_DEVICE_NAME);
+	//oScanResponseData.setName("bedroom");		// nickname
+	oScanResponseData.setPartialServices(BLEUUID((uint16_t)0x181a));
+	//oScanResponseData.setAppearance();
 	bleServer->getAdvertising()->setScanResponseData(oScanResponseData);
-#endif
 
 	startAdvertising();
 }
 
 void TransferBLE() {
-	int temperature = random(-40, 60);
-	bleTemperatureChar->setValue(temperature);
+	int16_t temperature = random(-10, 10) * 100;
+	bleTemperatureChar->setValue((uint8_t *)&temperature, sizeof(temperature));
 	bleTemperatureChar->notify();
-	int humidity = random(0, 100);
-	bleHumidityChar->setValue(humidity);
+	int16_t humidity = random(50, 60);
+	bleHumidityChar->setValue((uint8_t *)&humidity, sizeof(humidity));
 	bleHumidityChar->notify();
 	//vTaskDelay(1);  // one tick delay (15ms) for stability
 	Serial.println("BLE notify");
