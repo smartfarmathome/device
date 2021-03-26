@@ -9,7 +9,7 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.blebridge.BLEFacade.SFAHDevice;
+import com.example.blebridge.BLEFacade.SfDevice;
 
 import java.util.ArrayList;
 
@@ -19,7 +19,7 @@ import java.util.ArrayList;
 public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.ViewHolder> {
     private static final String TAG = DeviceListAdapter.class.getSimpleName();
 
-    private ArrayList<SFAHDevice> SFAHDevices;
+    private ArrayList<SfDevice> SfDevices;
 
     // BEGIN_INCLUDE(recyclerViewSampleViewHolder)
     /**
@@ -74,7 +74,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
      * Initialize the dataset of the Adapter.
      */
     public DeviceListAdapter() {
-        SFAHDevices = new ArrayList<>();
+        SfDevices = new ArrayList<>();
     }
 
     // BEGIN_INCLUDE(recyclerViewOnCreateViewHolder)
@@ -97,7 +97,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
 
         // Get element from your dataset at this position and replace the contents of the view
         // with that element
-        SFAHDevice device = SFAHDevices.get(position);
+        SfDevice device = SfDevices.get(position);
         viewHolder.getViewDeviceName().setText(device.getName());
         viewHolder.getViewDeviceModelName().setText(device.getModelName());
         viewHolder.getViewDeviceMacAddress().setText(device.getMacAddress());
@@ -109,16 +109,16 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return SFAHDevices.size();
+        return SfDevices.size();
     }
 
-    public void addDevice(SFAHDevice device) {
-        SFAHDevices.add(device);
-        notifyItemInserted(SFAHDevices.size() - 1);
+    public void addDevice(SfDevice device) {
+        SfDevices.add(device);
+        notifyItemInserted(SfDevices.size() - 1);
     }
 
     public void removeDevice(int position) {
-        SFAHDevices.remove(position);
+        SfDevices.remove(position);
         notifyItemRemoved(position);
     }
 }

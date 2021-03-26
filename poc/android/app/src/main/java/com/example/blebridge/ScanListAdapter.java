@@ -10,7 +10,7 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.blebridge.BLEFacade.BLEManager;
-import com.example.blebridge.BLEFacade.SFAHDevice;
+import com.example.blebridge.BLEFacade.SfDevice;
 
 /**
  * Provide views to RecyclerView with data from mDataSet.
@@ -89,11 +89,11 @@ public class ScanListAdapter extends RecyclerView.Adapter<ScanListAdapter.ViewHo
 
         // Get element from your dataset at this position and replace the contents of the view
         // with that element
-        SFAHDevice SFAHDevice = BLEManager.getInstance().getSFAHDevice(position);
-        viewHolder.getViewDeviceName().setText(SFAHDevice.getName());
-        viewHolder.getViewDeviceModelName().setText(SFAHDevice.getModelName());
-        viewHolder.getViewDeviceMacAddress().setText(SFAHDevice.getMacAddress());
-        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(SFAHDevice.getSignalStrength()));
+        SfDevice SfDevice = BLEManager.getInstance().getSFAHDevice(position);
+        viewHolder.getViewDeviceName().setText(SfDevice.getName());
+        viewHolder.getViewDeviceModelName().setText(SfDevice.getModelName());
+        viewHolder.getViewDeviceMacAddress().setText(SfDevice.getMacAddress());
+        viewHolder.getViewDeviceSignalStrength().setText(Integer.toString(SfDevice.getSignalStrength()));
         viewHolder.getViewDeviceImage().setImageResource(R.drawable.dev1_sensor_only);
     }
     // END_INCLUDE(recyclerViewOnBindViewHolder)

@@ -48,7 +48,7 @@ public class ScanFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        FloatingActionButton fab = (FloatingActionButton)getActivity().findViewById(R.id.fab);
+        FloatingActionButton fab = (FloatingActionButton) getActivity().findViewById(R.id.fab);
         if (fab != null) {
             fab.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -63,10 +63,21 @@ public class ScanFragment extends Fragment {
         BLEManager.getInstance().startScanLeDevice(bleCallbacks);
     }
 
+    @Override
+    public void onStop() {
+        super.onStop();
+        BLEManager.getInstance().reset();
+    }
+
     BleCallbacks bleCallbacks = new BleCallbacks() {
         @Override
-        public void onScanFound(int i) {
+        public void onItemInserted(int i) {
             mAdapter.notifyItemInserted(i);
+        }
+
+        @Override
+        public void onItemChanged(int i) {
+            mAdapter.notifyItemChanged(i);
         }
     };
 }

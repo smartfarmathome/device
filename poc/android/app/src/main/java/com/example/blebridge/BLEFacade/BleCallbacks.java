@@ -1,5 +1,6 @@
 package com.example.blebridge.BLEFacade;
 
 public interface BleCallbacks {
-    void onScanFound(int i);
+    void onItemInserted(int i);
+    void onItemChanged(int i);
 }

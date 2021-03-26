@@ -23,6 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.example.blebridge.BLEFacade.Constants.BLE_UUID;
+import static com.example.blebridge.BLEFacade.Constants.BLE_UUID_SERVICE_ENVIRONMENTAL_SENSING;
+
 public class BLEManager {
     private static final String TAG = BLEManager.class.getSimpleName();
     private Context context;
@@ -31,41 +34,16 @@ public class BLEManager {
     private Handler handler;
     private BluetoothLeScanner bleScanner;
     private static final long SCAN_PERIOD = 10000; // Stops scanning after 10 seconds.
-    private static final String BLE_UUID_PREFIX = "0000";
-    private static final String BLE_UUID_POSTFIX = "-0000-1000-8000-00805f9b34fb";
-    private static final String BLE_UUID_SERVICE_ENVIRONMENTAL_SENSING = "181a";
-    private static final String BLE_UUID_CHAR_TEMPERATURE = "2a6e";
-    private static final String BLE_UUID_CHAR_HUMIDITY = "2a6f";
-    private static final String BLE_UUID_SERVICE_DEVICE_INFORMATION = "180a";
-    private static final String BLE_UUID_CHAR_MANUFACTURER_NAME = "2a29";
-    private static final String BLE_UUID_CHAR_MODEL_NUMBER = "2a24";
-    private static final String BLE_UUID_CHAR_SOFTWARE_REVISION = "2a28";
-    private static final ParcelUuid parcelUuidServiceDeviceInformation = ParcelUuid.fromString(BLE_UUID(BLE_UUID_SERVICE_DEVICE_INFORMATION));
     private static final int GATT_MAX_MTU_SIZE = 517;
 
     private BleCallbacks bleCallbacks;
-    private List<SFAHDevice> devicesAll;
-    private List<SFAHDevice> devicesListed;
-    private List<SFAHDevice> devicesScanned;
-    private SFAHDevice deviceToConnect;
-    private SFAHDevice deviceConnected;
-    private int deviceConnectedIndex;
+    private List<SfDevice> devicesAll;
+    private List<SfDevice> devicesListed;
+    private List<SfDevice> devicesScanned;
+    private SfDevice deviceToConnect;
+    private SfDevice deviceConnected;
     private BluetoothGatt gattConnected;
-
-    class UuidCharacteristic {
-        String uuidServ;
-        String uuidChar;
-        public UuidCharacteristic(String uuidServ, String uuidChar) {
-            this.uuidServ = uuidServ;
-            this.uuidChar = uuidChar;
-        }
-    }
-
-    List<UuidCharacteristic> uuidCharacteristics;
-
-    private static String BLE_UUID(String uuid) {
-        return BLE_UUID_PREFIX + uuid + BLE_UUID_POSTFIX;
-    }
+    private int indexToRead;
 
     private BLEManager() {
     }
@@ -101,29 +79,27 @@ public class BLEManager {
         return false;
     }
 
+    private Runnable stopScanByTimer = new Runnable() {
+        @Override
+        public void run() {
+            Log.d(TAG, "stop BLE scan by timer");
+            mScanning = false;
+            BLEManager.this.bleCallbacks = null;
+            bleScanner.stopScan(leScanCallback);
+        }
+    };
+
     public void startScanLeDevice() {
         if (mScanning == false) {
             Log.d(TAG, "start BLE scan");
             // Stops scanning after a pre-defined scan period.
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    Log.d(TAG, "stop BLE scan by timer");
-                    mScanning = false;
-                    BLEManager.this.bleCallbacks = null;
-                    bleScanner.stopScan(leScanCallback);
-                }
-            }, SCAN_PERIOD);
+            handler.postDelayed(stopScanByTimer, SCAN_PERIOD);
 
-            /*
-            ScanFilter scan_filter = new ScanFilter.Builder()
-                    .setServiceUuid(ParcelUuid.fromString(BLE_UUID(BLE_UUID_SERVICE_ENVIRONMENTAL_SENSING)),
-                            ParcelUuid.fromString("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"))
-                    .build();
-             */
-            ScanFilter scan_filter = new ScanFilter.Builder().setDeviceName("SFAH").build();
             List<ScanFilter> filters = new ArrayList<>();
-            filters.add(scan_filter);
+            //filters.add(new ScanFilter.Builder().setDeviceName("SFatHome").build());
+            filters.add(new ScanFilter.Builder()
+                    .setServiceUuid(ParcelUuid.fromString(BLE_UUID(BLE_UUID_SERVICE_ENVIRONMENTAL_SENSING)))
+                    .build());
 
             ScanSettings settings = new ScanSettings.Builder()
                     .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
@@ -147,6 +123,7 @@ public class BLEManager {
             Log.d(TAG, "stop BLE scan");
             mScanning = false;
             this.bleCallbacks = null;
+            handler.removeCallbacks(stopScanByTimer);
             bleScanner.stopScan(leScanCallback);
         }
     }
@@ -175,15 +152,26 @@ public class BLEManager {
         private void processScanResult(final ScanResult result) {
             int rssi = result.getRssi();
             Log.d(TAG, "processScanResult() " + result.toString() + ", rssi = " + rssi);
-            SFAHDevice device = new SFAHDevice(result.getDevice(), rssi);
-            devicesScanned.add(device);
+            BluetoothDevice bleDeviceToAdd = result.getDevice();
+            int i = 0;
+            for (SfDevice device : devicesScanned) {
+                if (device.bleDevice.getAddress().equals(bleDeviceToAdd.getAddress())) {
+                    Log.d(TAG, "update RSSI " + rssi + " of the device scanned already: " + bleDeviceToAdd.getAddress());
+                    device.setRssi(rssi);
+                    BLEManager.this.bleCallbacks.onItemChanged(i);
+                    return;
+                }
+                i++;
+            }
+            SfDevice deviceToAdd = new SfDevice(bleDeviceToAdd, rssi);
+            devicesScanned.add(deviceToAdd);
             if (BLEManager.this.bleCallbacks != null) {
-                BLEManager.this.bleCallbacks.onScanFound(devicesScanned.size() - 1);
+                BLEManager.this.bleCallbacks.onItemInserted(devicesScanned.size() - 1);
             }
         }
     };
 
-    private BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+    private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
@@ -217,7 +205,7 @@ public class BLEManager {
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
             Log.d(TAG, "onServicesDiscovered(" + gatt + ", " + status + ")");
-            getAllCharacteristics(gatt);
+            deviceConnected.setCharacteristicsToRead(getAllCharacteristics(gatt));
             gatt.requestMtu(GATT_MAX_MTU_SIZE);
         }
 
@@ -229,6 +217,10 @@ public class BLEManager {
                 String charUuid = characteristic.getUuid().toString();
                 byte[] value = characteristic.getValue();
                 deviceConnected.setCharacteristic(charUuid, value);
+                boolean toRead = readNextCharacteristic(gatt);
+                if (toRead == false) {
+                    BLEManager.this.bleCallbacks.onItemChanged(indexToRead);
+                }
             } else {
                 Log.d(TAG, "status error " + status);
             }
@@ -240,28 +232,27 @@ public class BLEManager {
             gattConnected.close();
             gattConnected = null;
         }
+        startScanLeDevice();
     }
 
-    private void readNextCharacteristic(BluetoothGatt gatt) {
-        if (uuidCharacteristics == null) {
-            Log.d(TAG, "!!! WARNING: uuidCharacteristics is null");
-            return;
-        } else if (uuidCharacteristics.size() == 0) {
+    private boolean readNextCharacteristic(BluetoothGatt gatt) {
+        UuidCharacteristic uuidCharacteristic = deviceConnected.getNextCharacteristicToRead();
+        if (uuidCharacteristic == null) {
             Log.d(TAG, "no characteristics to read");
-            return;
+            return false;
         }
-        UuidCharacteristic uuidCharacteristic = uuidCharacteristics.get(0);
         BluetoothGattService service = gatt.getService(UUID.fromString(uuidCharacteristic.uuidServ));
         BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(uuidCharacteristic.uuidChar));
         Log.d(TAG, "try to read characteristic " + uuidCharacteristic.uuidChar);
         gatt.readCharacteristic(characteristic);
+        return true;
     }
 
-    private void getAllCharacteristics(BluetoothGatt gatt) {
-        uuidCharacteristics = new ArrayList<>();
-        for (BluetoothGattService service: gatt.getServices()) {
+    private List<UuidCharacteristic> getAllCharacteristics(BluetoothGatt gatt) {
+        List<UuidCharacteristic> uuidCharacteristics = new ArrayList<>();
+        for (BluetoothGattService service : gatt.getServices()) {
             String uuidServ = service.getUuid().toString();
-            for (BluetoothGattCharacteristic charac: service.getCharacteristics()) {
+            for (BluetoothGattCharacteristic charac : service.getCharacteristics()) {
                 String uuidChar = charac.getUuid().toString();
                 Log.d(TAG, " * " + uuidServ + ", " + uuidChar);
                 UuidCharacteristic uuidCharacteristic = new UuidCharacteristic(uuidServ, uuidChar);
@@ -269,16 +260,17 @@ public class BLEManager {
             }
         }
         Log.d(TAG, "getAllCharacteristics() total " + uuidCharacteristics.size());
+        return uuidCharacteristics;
     }
 
     public void connectScanned(int i) {
         try {
-            SFAHDevice device = devicesScanned.get(i);
+            SfDevice device = devicesScanned.get(i);
             stopScanLeDevice();
             connectBleDevice(device);
+            indexToRead = i;
         } catch (IndexOutOfBoundsException e) {
             e.printStackTrace();
-            return;
         }
     }
 
@@ -286,7 +278,7 @@ public class BLEManager {
         return devicesScanned.size();
     }
 
-    public SFAHDevice getSFAHDevice(int i) {
+    public SfDevice getSFAHDevice(int i) {
         try {
             return devicesScanned.get(i);
         } catch (IndexOutOfBoundsException e) {
@@ -295,8 +287,7 @@ public class BLEManager {
         }
     }
 
-    private void connectBleDevice(SFAHDevice device) {
-        uuidCharacteristics = null;
+    private void connectBleDevice(SfDevice device) {
         deviceToConnect = device;
         device.bleDevice.connectGatt(context, false, gattCallback);
     }
