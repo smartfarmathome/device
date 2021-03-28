@@ -53,14 +53,15 @@ public class ScanFragment extends Fragment {
             fab.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    BLEManager.getInstance().stopScanLeDevice();
+                    BLEManager.getInstance().reset();
                     NavHostFragment.findNavController(ScanFragment.this)
                             .navigate(R.id.action_ScanFragment_to_DeviceListFragment);
                 }
             });
             fab.setImageResource(android.R.drawable.ic_media_rew);
         }
-        BLEManager.getInstance().startScanLeDevice(bleCallbacks);
+        BLEManager.getInstance().setCallbacks(bleCallbacks);
+        BLEManager.getInstance().startScanLeDevice();
     }
 
     @Override

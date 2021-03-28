@@ -19,9 +19,16 @@ import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
 
+import com.example.blebridge.BLEFacade.Actions.BleAction;
+import com.example.blebridge.BLEFacade.Actions.BleActionClose;
+import com.example.blebridge.BLEFacade.Actions.BleActionDiscoverServices;
+import com.example.blebridge.BLEFacade.Actions.BleActionReadCharacteristic;
+import com.example.blebridge.BLEFacade.Actions.BleActionRequestMtu;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static com.example.blebridge.BLEFacade.Constants.BLE_UUID;
 import static com.example.blebridge.BLEFacade.Constants.BLE_UUID_SERVICE_ENVIRONMENTAL_SENSING;
@@ -79,12 +86,15 @@ public class BLEManager {
         return false;
     }
 
+    public void setCallbacks(BleCallbacks bleCallbacks) {
+        this.bleCallbacks = bleCallbacks;
+    }
+
     private Runnable stopScanByTimer = new Runnable() {
         @Override
         public void run() {
             Log.d(TAG, "stop BLE scan by timer");
             mScanning = false;
-            BLEManager.this.bleCallbacks = null;
             bleScanner.stopScan(leScanCallback);
         }
     };
@@ -113,16 +123,10 @@ public class BLEManager {
         }
     }
 
-    public void startScanLeDevice(BleCallbacks bleCallbacks) {
-        this.startScanLeDevice();
-        this.bleCallbacks = bleCallbacks;
-    }
-
     public void stopScanLeDevice() {
         if (mScanning) {
             Log.d(TAG, "stop BLE scan");
             mScanning = false;
-            this.bleCallbacks = null;
             handler.removeCallbacks(stopScanByTimer);
             bleScanner.stopScan(leScanCallback);
         }
@@ -158,7 +162,9 @@ public class BLEManager {
                 if (device.bleDevice.getAddress().equals(bleDeviceToAdd.getAddress())) {
                     Log.d(TAG, "update RSSI " + rssi + " of the device scanned already: " + bleDeviceToAdd.getAddress());
                     device.setRssi(rssi);
-                    BLEManager.this.bleCallbacks.onItemChanged(i);
+                    if (BLEManager.this.bleCallbacks != null) {
+                        BLEManager.this.bleCallbacks.onItemChanged(i);
+                    }
                     return;
                 }
                 i++;
@@ -175,6 +181,7 @@ public class BLEManager {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
+            pendingAction = null;
             BluetoothDevice device = gatt.getDevice();
             Log.d(TAG, "onConnectionStateChange(" + gatt.toString() + ", " + status + ", " + newState + ")");
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -183,69 +190,93 @@ public class BLEManager {
                     deviceConnected = deviceToConnect;
                     deviceToConnect = null;
                     gattConnected = gatt;
-                    gatt.discoverServices();
+                    enqueueAction(new BleActionDiscoverServices(gatt));
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.d(TAG, "Successfully disconnected from " + device.getAddress());
                 }
             } else {
                 Log.d(TAG, "Error for " + device.getAddress() + ", status = " + status);
                 gatt.close();
-                gattConnected = null;
             }
         }
 
         @Override
         public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
             super.onMtuChanged(gatt, mtu, status);
+            pendingAction = null;
             Log.d(TAG, "onMtuChanged(" + mtu + ", " + status + ")");
-            readNextCharacteristic(gatt);
+            doNextAction();
         }
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
-            Log.d(TAG, "onServicesDiscovered(" + gatt + ", " + status + ")");
+            pendingAction = null;
+            Log.d(TAG, "onServicesDiscovered(" + status + ")");
+            enqueueAction(new BleActionRequestMtu(gatt, GATT_MAX_MTU_SIZE));
             deviceConnected.setCharacteristicsToRead(getAllCharacteristics(gatt));
-            gatt.requestMtu(GATT_MAX_MTU_SIZE);
+            for (UuidCharacteristic uuidCharacteristic: deviceConnected.characteristicsToRead) {
+                enqueueAction(new BleActionReadCharacteristic(gatt, uuidCharacteristic.uuidServ, uuidCharacteristic.uuidChar));
+            }
+            enqueueAction(new BleActionClose(gatt));
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            Log.d(TAG, "onCharacteristicRead(" + gatt + ", " + characteristic + ", " + status + ")");
+            pendingAction = null;
+            String charUuid = characteristic.getUuid().toString();
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                String charUuid = characteristic.getUuid().toString();
                 byte[] value = characteristic.getValue();
+                //Log.d(TAG, "onCharacteristicRead(" + gatt + ", " + charUuid + ", " + value + ")");
                 deviceConnected.setCharacteristic(charUuid, value);
-                boolean toRead = readNextCharacteristic(gatt);
-                if (toRead == false) {
-                    BLEManager.this.bleCallbacks.onItemChanged(indexToRead);
-                }
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (BLEManager.this.bleCallbacks != null) {
+                            BLEManager.this.bleCallbacks.onItemChanged(indexToRead);
+                        }
+                    }
+                });
             } else {
-                Log.d(TAG, "status error " + status);
+                Log.d(TAG, "onCharacteristicRead() " + charUuid + ", status error = " + status);
             }
+            doNextAction();
         }
     };
 
-    public void reset() {
-        if (gattConnected != null) {
-            gattConnected.close();
-            gattConnected = null;
+    private ConcurrentLinkedQueue<BleAction> actionQueue = new ConcurrentLinkedQueue<>();
+    private BleAction pendingAction;
+
+    synchronized void enqueueAction(BleAction action) {
+        actionQueue.add(action);
+        if (pendingAction == null) {
+            doNextAction();
         }
-        startScanLeDevice();
     }
 
-    private boolean readNextCharacteristic(BluetoothGatt gatt) {
-        UuidCharacteristic uuidCharacteristic = deviceConnected.getNextCharacteristicToRead();
-        if (uuidCharacteristic == null) {
-            Log.d(TAG, "no characteristics to read");
-            return false;
+    synchronized private void doNextAction() {
+        if (pendingAction != null) {
+            Log.d(TAG, "doNextAction() called when an operation is pending! Aborting.");
+            return;
         }
-        BluetoothGattService service = gatt.getService(UUID.fromString(uuidCharacteristic.uuidServ));
-        BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(uuidCharacteristic.uuidChar));
-        Log.d(TAG, "try to read characteristic " + uuidCharacteristic.uuidChar);
-        gatt.readCharacteristic(characteristic);
-        return true;
+        BleAction action = actionQueue.poll();
+        if (action == null) {
+            Log.d(TAG, "Operation queue empty, returning");
+            return;
+        }
+        pendingAction = action;
+        action.doAction();
+    }
+
+    public synchronized void reset() {
+        actionQueue.clear();
+        if (gattConnected != null) {
+            actionQueue.add(new BleActionClose(gattConnected));
+            gattConnected = null;
+        }
+        deviceConnected = null;
+        stopScanLeDevice();
     }
 
     private List<UuidCharacteristic> getAllCharacteristics(BluetoothGatt gatt) {
@@ -265,8 +296,8 @@ public class BLEManager {
 
     public void connectScanned(int i) {
         try {
-            SfDevice device = devicesScanned.get(i);
             stopScanLeDevice();
+            SfDevice device = devicesScanned.get(i);
             connectBleDevice(device);
             indexToRead = i;
         } catch (IndexOutOfBoundsException e) {

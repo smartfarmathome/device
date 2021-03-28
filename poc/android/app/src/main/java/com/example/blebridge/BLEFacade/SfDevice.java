@@ -4,8 +4,7 @@ import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.example.blebridge.DeviceListAdapter;
-
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -17,7 +16,7 @@ import static com.example.blebridge.BLEFacade.Constants.BLE_UUID_CHAR_SOFTWARE_R
 import static com.example.blebridge.BLEFacade.Constants.characteristicsPreferred;
 
 public class SfDevice {
-    private static final String TAG = DeviceListAdapter.class.getSimpleName();
+    private static final String TAG = SfDevice.class.getSimpleName();
     private UUID uuid;
     private String macAddress;
     private String name;
@@ -80,27 +79,18 @@ public class SfDevice {
                 '}';
     }
 
-    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
-
-    public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
-    }
-
     void setCharacteristic(String uuid, byte[] value) {
-        Log.d(TAG, "setCharacteristic() " + uuid + ", " + bytesToHex(value));
         if (uuid.equals(BLE_UUID(BLE_UUID_CHAR_MANUFACTURER_NAME))) {
-            manufacturerName = value.toString();
+            manufacturerName = new String(value, StandardCharsets.UTF_8);
+            Log.d(TAG, "setCharacteristic() manufacturerName = " + manufacturerName);
         } else if (uuid.equals(BLE_UUID(BLE_UUID_CHAR_MODEL_NUMBER))) {
-            modelName = value.toString();
+            modelName = new String(value, StandardCharsets.UTF_8);
+            Log.d(TAG, "setCharacteristic() modelName = " + modelName);
         } else if (uuid.equals(BLE_UUID(BLE_UUID_CHAR_SOFTWARE_REVISION))) {
-            softwareVersion = value.toString();
+            softwareVersion = new String(value, StandardCharsets.UTF_8);
+            Log.d(TAG, "setCharacteristic() softwareVersion = " + softwareVersion);
         } else {
+            Log.d(TAG, "setCharacteristic() " + uuid + ", " + Constants.bytesToHex(value));
             characteristicsRead.putByteArray(uuid, value);
         }
     }
