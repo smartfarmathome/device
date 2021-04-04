@@ -80,10 +80,7 @@ public class BLEManager {
     }
 
     public boolean isEnabled() {
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-            return true;
-        }
-        return false;
+        return (bluetoothAdapter != null && bluetoothAdapter.isEnabled());
     }
 
     public void setCallbacks(BleCallbacks bleCallbacks) {

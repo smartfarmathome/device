@@ -1,15 +1,19 @@
 package com.example.blebridge;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -23,6 +27,10 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class DeviceListFragment extends Fragment {
     private static final String TAG = DeviceListFragment.class.getSimpleName();
+
+    static final int ENABLE_BLUETOOTH_REQUEST_CODE = 1;
+    static final int LOCATION_PERMISSION_REQUEST_CODE = 2;
+
     protected RecyclerView mRecyclerView;
     protected DeviceListAdapter mAdapter;
 
@@ -71,28 +79,73 @@ public class DeviceListFragment extends Fragment {
                 public void onClick(View view) {
                     // check to determine whether BLE is supported on the device.
                     if (!getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+                        Log.d(TAG, "Cannot start BLE because this device does not support Bluetooth LE.");
                         Toast.makeText(getContext(), R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    int permission = ContextCompat.checkSelfPermission( getContext(), android.Manifest.permission.ACCESS_FINE_LOCATION );
-                    if (permission == PackageManager.PERMISSION_DENIED ) {
-                        if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), android.Manifest.permission.ACCESS_FINE_LOCATION) == true) {
-                            Toast.makeText(getContext(), R.string.should_be_permitted, Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                    if (permission != PackageManager.PERMISSION_GRANTED ) {
-                        ActivityCompat.requestPermissions( getActivity(), new String[] {  android.Manifest.permission.ACCESS_FINE_LOCATION  }, 1);
+
+                    if (checkBluetoothEnabled() == false) {
                         return;
                     }
-                    if (!BLEManager.getInstance().isEnabled()) {
-                        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                        getActivity().startActivityForResult(enableBtIntent, 1);
+
+                    if (checkLocationPermission() == false) {
+                        return;
                     }
+
                     NavHostFragment.findNavController(DeviceListFragment.this)
                             .navigate(R.id.action_DeviceListFragment_to_ScanFragment);
                 }
             });
             fab.setImageResource(android.R.drawable.ic_input_add);
         }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult() " + requestCode);
+        if (requestCode == ENABLE_BLUETOOTH_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                Log.d(TAG, "Bluetooth is enabled by the user.");
+            } else {
+                Log.d(TAG, "Bluetooth is not enabled.");
+            }
+        }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                Log.d(TAG, "ACCESS_FINE_LOCATION is granted by the user.");
+                NavHostFragment.findNavController(DeviceListFragment.this)
+                        .navigate(R.id.action_DeviceListFragment_to_ScanFragment);
+            } else {
+                Log.d(TAG, "ACCESS_FINE_LOCATION is denied by the user.");
+                Toast.makeText(getContext(), R.string.fine_location_should_be_permitted, Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private boolean checkBluetoothEnabled() {
+        if (!BLEManager.getInstance().isEnabled()) {
+            Log.d(TAG, "Cannot start BLE because bluetooth is not enabled.");
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            getActivity().startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_REQUEST_CODE);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean checkLocationPermission() {
+        int permission = ContextCompat.checkSelfPermission(getContext(), android.Manifest.permission.ACCESS_FINE_LOCATION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && permission != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "ACCESS_FINE_LOCATION is not permitted for this app.");
+            if (ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), android.Manifest.permission.ACCESS_FINE_LOCATION) == true) {
+                Log.d(TAG, "Show the user why ACCESS_FINE_LOCATION permission is required.");
+                Toast.makeText(getContext(), R.string.fine_location_should_be_permitted, Toast.LENGTH_LONG).show();
+            } else {
+                Log.d(TAG, "Request ACCESS_FINE_LOCATION permission to the user.");
+                ActivityCompat.requestPermissions(getActivity(), new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+            }
+            return false;
+        }
+        return true;
     }
 }
