@@ -21,7 +21,8 @@ void stopAdvertising();
 void TransferBLE();
 
 
-unsigned long last_notify_sec;
+static unsigned long last_notify_sec;
+static unsigned long last_sec;
 
 Mode mode;
 
@@ -36,6 +37,7 @@ BLECharacteristic *charSoftwareRevision = nullptr;
 BLEService *bleEsService = nullptr;
 BLECharacteristic *bleTemperatureChar = nullptr;
 BLECharacteristic *bleHumidityChar = nullptr;
+BLECharacteristic *bleIlluminanceChar = nullptr;
 
 //BLEDescriptor outdoorTemperatureDescriptor(BLEUUID((uint16_t)0x2901));
 //BLEDescriptor outdoorHumidityDescriptor(BLEUUID((uint16_t)0x2901));
@@ -96,14 +98,17 @@ void ble_setup() {
 	serviceDeviceInformation->start();
 
 	// Environmental Sensing service
-	bleEsService = bleServer->createService(BLEUUID((uint16_t)0x181A));
+	bleEsService = bleServer->createService(BLEUUID((uint16_t)0x181a));
+	BLEDescriptor *desc;
 
-	// add temperature
-	bleTemperatureChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2A6E), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-	//outdoorTemperatureDescriptor.setValue("Temperature -40-60°C");
-	//bleTemperatureChar->addDescriptor(&outdoorTemperatureDescriptor);
-	BLEDescriptor *descEsMeasurementTemp = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
-	uint8_t value[] = {
+	/*
+	 * temperature characteristic
+	 */
+	bleTemperatureChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2a6e), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+	/* ES Measurement Descriptor value */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
+	uint8_t value11[] = {
 		0x00, 0x00,	// flag
 		0x02,		// sampling function
 		0x0a, 0x00, 0x00,	// measurement period
@@ -111,17 +116,72 @@ void ble_setup() {
 		0x01,		// application
 		0x02,		// measurement uncertaintity
 	};
-	descEsMeasurementTemp->setValue(value, sizeof(value));
-	bleTemperatureChar->addDescriptor(descEsMeasurementTemp);
+	desc->setValue(value11, sizeof(value11));
+	bleTemperatureChar->addDescriptor(desc);
 
-	// add humidity
-	bleHumidityChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2A6F), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-	//outdoorHumidityDescriptor.setValue("Humidity 0 to 100%");
-	//bleHumidityChar->addDescriptor(&outdoorHumidityDescriptor);
-	BLEDescriptor *descEsMeasurementHumi = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
-	descEsMeasurementHumi->setValue(value, sizeof(value));
-	bleHumidityChar->addDescriptor(descEsMeasurementHumi);
-	//bleHumidityChar->addDescriptor(new BLE2902());
+	/* Valid Range Descriptor */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x2906));
+	int16_t value12[] = {
+		-4000, 6000,
+	};
+	desc->setValue((uint8_t *)value12, sizeof(value12));
+	bleTemperatureChar->addDescriptor(desc);
+
+	/*
+	 * humidity characteristic
+	 */
+	bleHumidityChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2a6f), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+	/* ES Measurement Descriptor */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
+	uint8_t value21[] = {
+		0x00, 0x00,	// flag
+		0x02,		// sampling function
+		0x0a, 0x00, 0x00,	// measurement period
+		0x84, 0x03, 0x00,	// update interval
+		0x12,		// application
+		0x02,		// measurement uncertaintity
+	};
+	desc->setValue(value21, sizeof(value21));
+	bleHumidityChar->addDescriptor(desc);
+
+	/* Valid Range Descriptor */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x2906));
+	int16_t value22[] = {
+		0, 10000,
+	};
+	desc->setValue((uint8_t *)value22, sizeof(value22));
+	bleHumidityChar->addDescriptor(desc);
+
+	bleEsService->start();
+
+#if 0
+	/*
+	 * illuminance characteristic
+	 */
+	bleHumidityChar = bleEsService->createCharacteristic(BLEUUID((uint16_t)0x2afb), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+
+	/* ES Measurement Descriptor */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x290c));
+	uint8_t value31[] = {
+		0x00, 0x00,	// flag
+		0x02,		// sampling function
+		0x0a, 0x00, 0x00,	// measurement period
+		0x84, 0x03, 0x00,	// update interval
+		0x21,		// application
+		0x02,		// measurement uncertaintity
+	};
+	desc->setValue(value31, sizeof(value31));
+	bleHumidityChar->addDescriptor(desc);
+
+	/* Valid Range Descriptor */
+	desc = new BLEDescriptor(BLEUUID((uint16_t)0x2906));
+	int16_t value32[] = {
+		0, 10000,
+	};
+	desc->setValue((uint8_t *)value32, sizeof(value32));
+	bleHumidityChar->addDescriptor(desc);
+#endif
 
 	bleEsService->start();
 
@@ -153,17 +213,29 @@ void ble_setup() {
 }
 
 void TransferBLE() {
-	int16_t temperature = random(-10, 10) * 100;
+	int16_t temperature = random(-40, 60) * 100;
 	bleTemperatureChar->setValue((uint8_t *)&temperature, sizeof(temperature));
 	bleTemperatureChar->notify();
-	int16_t humidity = random(50, 60);
+	uint16_t humidity = random(0, 100) * 100;
 	bleHumidityChar->setValue((uint8_t *)&humidity, sizeof(humidity));
 	bleHumidityChar->notify();
+#if 0
+	uint16_t illuminance = random(0, 100) * 100;
+	bleHumidityChar->setValue((uint8_t *)&illuminance, sizeof(illuminance));
+	bleHumidityChar->notify();
+#endif
 	//vTaskDelay(1);  // one tick delay (15ms) for stability
 	Serial.println("BLE notify");
 }
 
 void ble_loop(unsigned long cur_sec, unsigned long cur_msec) {
+	if (cur_sec != last_sec) {
+		Serial.print(cur_sec);
+		Serial.print(" mode = ");
+		Serial.print(mode);
+		Serial.println();
+		last_sec = cur_sec;
+	}
 	if (mode == MODE_CONNECTED) {
 		if (cur_sec - last_notify_sec >= BLE_NOTIFY_INTERVAL_SEC) {
 			TransferBLE();

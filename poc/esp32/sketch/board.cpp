@@ -41,6 +41,7 @@ void loop_board()
 	cur_msec = millis();
 	if (cur_msec - last_msec >= 1000) {
 		cur_sec++;
+		last_msec = cur_msec;
 	}
 
 	/*
